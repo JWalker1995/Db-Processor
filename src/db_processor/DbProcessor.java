@@ -5,15 +5,12 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class DbProcessor
 {
 	static final String DB_JDBC_DRIVER = "com.mysql.jdbc.Driver";  
-	static final String DB_URL = "jdbc:mysql://127.0.0.1:3306/gnosis";
-	static final String DB_USER = "root";
-	static final String DB_PASS = "";
-	
-	static final String PROCESSOR_CLASS = "ProcessorCleanHtml";
 
 	public static void main(String[] args)
 	{
@@ -31,7 +28,7 @@ public class DbProcessor
 		String password = "";
 		String table = "";
 		int threads = 16;
-		String chunk_size = "1000";
+		int chunk_size = 1000;
 		
 		int i = 1;
 		int c = args.length - 1;
@@ -67,7 +64,7 @@ public class DbProcessor
 			}
 			else if (args[i].equals("-c") || args[i].equals("--chunk"))
 			{
-				chunk_size = Integer.toString(Integer.parseInt(args[++i]));
+				chunk_size = Integer.parseInt(args[++i]);
 			}
 			else
 			{
@@ -97,18 +94,13 @@ public class DbProcessor
 			Class.forName(DB_JDBC_DRIVER);
 	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
 	        System.out.println("Connected to database...");
+	        
+	        Manager manager = new Manager(conn, "SELECT * FROM " + table, threads);
+	        manager.run(0, chunk_size);
 
-		    Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
-		    if (stmt.execute("SELECT * FROM " + table + " LIMIT " + chunk_size))
-		    {
-		        ResultSet rs = stmt.getResultSet();
-		        rs.next();
-		        System.out.println("Success");
-		    }
-		    else
-		    {
-		    	System.out.println("Failed");
-		    }
+	        ExecutorService service = Executors.newFixedThreadPool(threads);
+	        
+	        ExecutorService exService = new ThreadPoolExecutor(NUMBER_THREADS, NUMBER_THREADS, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(workQueueSize));
 		}
         catch (ClassNotFoundException e)
         {
