@@ -17,9 +17,6 @@ public abstract class Filter implements Runnable
 	@Override
 	final public void run()
 	{
-		System.out.print("Processing: ");
-		System.out.println(Thread.currentThread().getId());
-		
 		try
 		{
 			int i = 0;
@@ -29,6 +26,7 @@ public abstract class Filter implements Runnable
 				i++;
 			}
 			if (i == 0) {manager.cont = false;}
+			rows.close();
 		}
 		catch (SQLException ex)
 		{

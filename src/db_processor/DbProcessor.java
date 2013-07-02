@@ -69,7 +69,7 @@ public class DbProcessor
 			{
 				table = args[++i];
 			}
-			else if (args[i].equals("-h") || args[i].equals("--threads"))
+			else if (args[i].equals("-x") || args[i].equals("--threads"))
 			{
 				threads = Integer.parseInt(args[++i]);
 			}

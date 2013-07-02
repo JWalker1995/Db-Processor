@@ -47,23 +47,19 @@ public class Manager
 			int get = Math.min(chunk_size, limit - offset);
 			if (get <= 0) {cont = false; continue;}
 
-			System.out.println("getting res");
 			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE).executeQuery(select_sql + Integer.toString(offset) + "," + Integer.toString(get));
-			System.out.println("got res");
 			
 			Filter filter = new FilterCleanHtml();
 			filter.init(this, res);
 			exec.execute(filter);
 
 			offset += chunk_size;
-			//progress.set_cur(offset);
+			progress.set_cur(offset);
 			
 			synchronized(this)
 			{
-				System.out.println(exec.getQueue().size());
 				while (exec.getQueue().size() >= max_queue)
 				{
-					System.out.println("waiting");
 					wait();
 				}
 			}
