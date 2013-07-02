@@ -15,8 +15,11 @@ public abstract class Filter implements Runnable
 	}
 	
 	@Override
-	public void run()
+	final public void run()
 	{
+		System.out.print("Processing: ");
+		System.out.println(Thread.currentThread().getId());
+		
 		try
 		{
 			int i = 0;
@@ -25,18 +28,24 @@ public abstract class Filter implements Runnable
 				process(rows);
 				i++;
 			}
-			//if (i == 0) {manager.cont = false;}
+			if (i == 0) {manager.cont = false;}
 		}
-		catch (SQLException e)
+		catch (SQLException ex)
 		{
 			synchronized(this)
 			{
-				manager.error.append(e.toString()).append("\n");
+				String nl = System.getProperty("line.separator");
+				manager.error.append("SQLException: " + ex.getMessage() + nl);
+				manager.error.append("SQLState: " + ex.getSQLState() + nl);
+				manager.error.append("VendorError: " + ex.getErrorCode() + nl);
 				manager.cont = false;
 			}
 		}
-		manager.notify();
+		synchronized(manager)
+		{
+			manager.notify();
+		}
 	}
 	
-	abstract protected void process(ResultSet row);
+	abstract protected void process(ResultSet row) throws SQLException;
 }

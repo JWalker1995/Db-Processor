@@ -2,6 +2,7 @@ package db_processor;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -14,6 +15,9 @@ public class DbProcessor
 
 	public static void main(String[] args)
 	{
+		// Test args:
+		// CleanHtml -d gnosis -t tbl_node -u root -c 10 -l 100
+		
 		if (args.length < 1)
 		{
 			System.out.println("Please specify the processor to run.");
@@ -35,6 +39,7 @@ public class DbProcessor
 		String table = "";
 		int threads = 16;
 		int chunk_size = 1000;
+		int limit = Integer.MAX_VALUE;
 		
 		int i = 1;
 		int c = args.length - 1;
@@ -72,6 +77,10 @@ public class DbProcessor
 			{
 				chunk_size = Integer.parseInt(args[++i]);
 			}
+			else if (args[i].equals("-l") || args[i].equals("--limit"))
+			{
+				limit = Integer.parseInt(args[++i]);
+			}
 			else
 			{
 				System.out.println("Warning: Unrecognized argument \"" + args[i] + "\"");
@@ -108,23 +117,34 @@ public class DbProcessor
 			}
 	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
 	        System.out.println("Connected to database...");
-	        
-	        Class filter;
+	        	        
+	        Class<Filter> filter;
 			try
 			{
-				filter = Class.forName("Filter" + processor_class);
+				filter = (Class<Filter>) Class.forName("db_processor.filter.Filter" + processor_class);
 			}
 			catch (ClassNotFoundException e)
 			{
 		        System.out.println("Class " + "Filter" + processor_class + " not found");
 		        return;
 			}
-	        
+			
 	        Manager manager = new Manager(conn, "SELECT * FROM " + table, threads, filter);
-	        manager.run(0, chunk_size);
+	        StringBuilder error = manager.run(0, chunk_size, limit);
+	        
+	        if (error.length() > 0)
+	        {
+	        	System.out.println("Finished with errors:");
+	        	System.out.println(error);
+	        }
+	        else
+	        {
+	        	System.out.println("Finished!");
+	        }
 		}
 		catch (SQLException ex)
 		{
+			ex.printStackTrace();
 		    System.out.println("SQLException: " + ex.getMessage());
 		    System.out.println("SQLState: " + ex.getSQLState());
 		    System.out.println("VendorError: " + ex.getErrorCode());
