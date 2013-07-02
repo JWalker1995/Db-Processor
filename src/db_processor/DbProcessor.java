@@ -21,6 +21,12 @@ public class DbProcessor
 		}
 		
 		String processor_class = args[0];
+		if (processor_class.toLowerCase() == "list")
+		{
+			System.out.println("CleanHtml");
+			return;
+		}
+		
 		String host = "127.0.0.1";
 		String port = "3306";
 		String db = "";
@@ -91,26 +97,41 @@ public class DbProcessor
 		
 		try
 		{
-			Class.forName(DB_JDBC_DRIVER);
+			try
+			{
+				Class.forName(DB_JDBC_DRIVER);
+			}
+			catch (ClassNotFoundException e)
+			{
+		        System.out.println("Class " + DB_JDBC_DRIVER + " not found");
+		        return;
+			}
 	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
 	        System.out.println("Connected to database...");
 	        
-	        Manager manager = new Manager(conn, "SELECT * FROM " + table, threads);
-	        manager.run(0, chunk_size);
-
-	        ExecutorService service = Executors.newFixedThreadPool(threads);
+	        Class filter;
+			try
+			{
+				filter = Class.forName("Filter" + processor_class);
+			}
+			catch (ClassNotFoundException e)
+			{
+		        System.out.println("Class " + "Filter" + processor_class + " not found");
+		        return;
+			}
 	        
-	        ExecutorService exService = new ThreadPoolExecutor(NUMBER_THREADS, NUMBER_THREADS, 0L, TimeUnit.MILLISECONDS, new LinkedBlockingQueue<Runnable>(workQueueSize));
-		}
-        catch (ClassNotFoundException e)
-        {
-        	System.out.println("Class " + DB_JDBC_DRIVER + " not found");
+	        Manager manager = new Manager(conn, "SELECT * FROM " + table, threads, filter);
+	        manager.run(0, chunk_size);
 		}
 		catch (SQLException ex)
 		{
 		    System.out.println("SQLException: " + ex.getMessage());
 		    System.out.println("SQLState: " + ex.getSQLState());
 		    System.out.println("VendorError: " + ex.getErrorCode());
+		}
+		catch (InterruptedException e)
+		{
+			e.printStackTrace();
 		}
 	}
 }

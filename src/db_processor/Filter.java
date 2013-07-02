@@ -2,24 +2,41 @@ package db_processor;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.concurrent.Callable;
 
-public abstract class Filter implements Callable<Integer>
+public abstract class Filter implements Runnable
 {
 	private Manager manager;
+	private ResultSet rows;
 	
-	public Integer run(ResultSet rows) throws SQLException
+	final public void init(Manager manager, ResultSet rows)
 	{
-		int i = 0;
-		while (rows.next())
-		{
-			process(rows);
-			i++;
-		}
-		//manager.notify();
-		
-		return i;
+		this.manager = manager;
+		this.rows = rows;
 	}
 	
-	abstract public void process(ResultSet row);
+	@Override
+	public void run()
+	{
+		try
+		{
+			int i = 0;
+			while (rows.next())
+			{
+				process(rows);
+				i++;
+			}
+			//if (i == 0) {manager.cont = false;}
+		}
+		catch (SQLException e)
+		{
+			synchronized(this)
+			{
+				manager.error.append(e.toString()).append("\n");
+				manager.cont = false;
+			}
+		}
+		manager.notify();
+	}
+	
+	abstract protected void process(ResultSet row);
 }
