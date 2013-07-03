@@ -17,6 +17,7 @@ public class Manager
 	private Connection conn;
 	private int threads;
 	private int max_queue;
+	private Class<Filter> filter;
 	
 	private ThreadPoolExecutor exec;
 	
@@ -26,11 +27,12 @@ public class Manager
 	public volatile StringBuilder error = new StringBuilder();
 	public volatile boolean cont = true;
 	
-	public Manager(Connection conn, String sql, int threads, Class processor_class) throws SQLException
+	public Manager(Connection conn, String sql, int threads, Class<Filter> filter) throws SQLException
 	{
 		this.conn = conn;
 		this.threads = threads;
 		this.max_queue = threads * 2;
+		this.filter = filter;
 		
 		exec = new ThreadPoolExecutor(threads, threads, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
@@ -49,9 +51,21 @@ public class Manager
 
 			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE).executeQuery(select_sql + Integer.toString(offset) + "," + Integer.toString(get));
 			
-			Filter filter = new FilterCleanHtml();
-			filter.init(this, res);
-			exec.execute(filter);
+			Filter filter_inst;
+			try
+			{
+				filter_inst = filter.newInstance();
+				filter_inst.init(this, res);
+				exec.execute(filter_inst);
+			}
+			catch (InstantiationException e)
+			{
+				e.printStackTrace();
+			}
+			catch (IllegalAccessException e)
+			{
+				e.printStackTrace();
+			}
 
 			offset += chunk_size;
 			progress.set_cur(offset);

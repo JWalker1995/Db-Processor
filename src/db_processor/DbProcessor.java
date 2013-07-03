@@ -24,8 +24,8 @@ public class DbProcessor
 			return;
 		}
 		
-		String processor_class = args[0];
-		if (processor_class.toLowerCase() == "list")
+		String filter_class = args[0];
+		if (filter_class.toLowerCase() == "list")
 		{
 			System.out.println("CleanHtml");
 			return;
@@ -121,11 +121,11 @@ public class DbProcessor
 	        Class<Filter> filter;
 			try
 			{
-				filter = (Class<Filter>) Class.forName("db_processor.filter.Filter" + processor_class);
+				filter = (Class<Filter>) Class.forName("db_processor.filter.Filter" + filter_class);
 			}
 			catch (ClassNotFoundException e)
 			{
-		        System.out.println("Class " + "Filter" + processor_class + " not found");
+		        System.out.println("Class " + "Filter" + filter_class + " not found");
 		        return;
 			}
 			
