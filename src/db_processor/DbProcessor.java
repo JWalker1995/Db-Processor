@@ -130,17 +130,9 @@ public class DbProcessor
 			}
 			
 	        Manager manager = new Manager(conn, "SELECT * FROM " + table, threads, filter);
-	        StringBuilder error = manager.run(0, chunk_size, limit);
+	        manager.run(0, chunk_size, limit);
 	        
-	        if (error.length() > 0)
-	        {
-	        	System.out.println("Finished with errors:");
-	        	System.out.println(error);
-	        }
-	        else
-	        {
-	        	System.out.println("Finished!");
-	        }
+	        System.out.println("Finished!");
 		}
 		catch (SQLException ex)
 		{

@@ -41,20 +41,20 @@ public class ProgressBar
 	{
 		if (max == 0)
 		{
-			System.out.print("\r" + Integer.toString(cur) + unit);
+			System.out.print(Integer.toString(cur) + unit + "\r");
 		}
 		else
 		{
 			int perc = (int) Math.floor(cur * 100 / max);
 			int bar = (int) Math.floor(cur * width / max);
 	
-			System.out.print("\r" + Integer.toString(perc) + "% [" + repeat('=', bar) + repeat(' ', width - bar) + "] " + Integer.toString(cur) + unit);
+			System.out.print(Integer.toString(perc) + "% [" + repeat('=', bar) + repeat(' ', width - bar) + "] " + Integer.toString(cur) + unit + "\r");
 		}
 	}
 	private StringBuilder repeat(char c, int n)
 	{
 		StringBuilder res = new StringBuilder();
-		while (n-- != 0) {res.append(c);}
+		while (n-- > 0) {res.append(c);}
 		return res;
 	}
 }

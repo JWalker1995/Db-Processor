@@ -22,7 +22,16 @@ public abstract class Filter implements Runnable
 			int i = 0;
 			while (rows.next())
 			{
-				process(rows);
+				try // This sub try/catch is so that exceptions thrown by processing a single row don't prevent processing the rest of the chunk.
+				{
+					process(rows);
+				}
+				catch (SQLException ex)
+				{
+					System.out.println("SQLException: " + ex.getMessage());
+					System.out.println("SQLState: " + ex.getSQLState());
+					System.out.println("VendorError: " + ex.getErrorCode());
+				}
 				i++;
 			}
 			if (i == 0) {manager.cont = false;}
@@ -30,14 +39,10 @@ public abstract class Filter implements Runnable
 		}
 		catch (SQLException ex)
 		{
-			synchronized(this)
-			{
-				String nl = System.getProperty("line.separator");
-				manager.error.append("SQLException: " + ex.getMessage() + nl);
-				manager.error.append("SQLState: " + ex.getSQLState() + nl);
-				manager.error.append("VendorError: " + ex.getErrorCode() + nl);
-				manager.cont = false;
-			}
+			System.out.println("SQLException: " + ex.getMessage());
+			System.out.println("SQLState: " + ex.getSQLState());
+			System.out.println("VendorError: " + ex.getErrorCode());
+			manager.cont = false;
 		}
 		synchronized(manager)
 		{

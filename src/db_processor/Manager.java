@@ -24,7 +24,6 @@ public class Manager
 	private String count_sql;
 	private String select_sql;
 	
-	public volatile StringBuilder error = new StringBuilder();
 	public volatile boolean cont = true;
 	
 	public Manager(Connection conn, String sql, int threads, Class<Filter> filter) throws SQLException
@@ -40,7 +39,7 @@ public class Manager
 		select_sql = sql + " LIMIT ";
 	}
 	
-	public StringBuilder run(int offset, int chunk_size, int limit) throws SQLException, InterruptedException
+	public void run(int offset, int chunk_size, int limit) throws SQLException, InterruptedException
 	{
 		ProgressBar progress = new ProgressBar(Math.min(get_max(), limit), 50, " rows");
 		
@@ -83,8 +82,6 @@ public class Manager
 		
 		exec.shutdown();
 		exec.awaitTermination(100, TimeUnit.DAYS);
-		
-		return error;
 	}
 	
 	private int get_max() throws SQLException
