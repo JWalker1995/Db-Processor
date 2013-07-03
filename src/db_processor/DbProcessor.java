@@ -16,7 +16,7 @@ public class DbProcessor
 	public static void main(String[] args)
 	{
 		// Test args:
-		// CleanHtml -d gnosis -t tbl_node -u root -c 10 -l 100
+		// CleanHtml -d piqa -t node -u root -c 10 -l 100 -x 8
 		
 		if (args.length < 1)
 		{
