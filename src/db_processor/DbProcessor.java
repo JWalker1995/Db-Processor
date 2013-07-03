@@ -8,6 +8,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 public class DbProcessor
 {
@@ -24,8 +26,8 @@ public class DbProcessor
 			return;
 		}
 		
-		String processor_class = args[0];
-		if (processor_class.toLowerCase() == "list")
+		String filter_class = args[0];
+		if (filter_class.toLowerCase() == "list")
 		{
 			System.out.println("CleanHtml");
 			return;
@@ -115,43 +117,78 @@ public class DbProcessor
 		        System.out.println("Class " + DB_JDBC_DRIVER + " not found");
 		        return;
 			}
-	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
-	        System.out.println("Connected to database...");
-	        	        
-	        Class<Filter> filter;
-			try
+			
+			String url = "jdbc:mysql://" + host + ":" + port + "/" + db;
+			
+			int[] statuses = new int[threads];
+			LinkedBlockingQueue<Status> messenger = new LinkedBlockingQueue<Status>();
+			
+			i = 0;
+			while (i < threads)
 			{
-				filter = (Class<Filter>) Class.forName("db_processor.filter.Filter" + processor_class);
-			}
-			catch (ClassNotFoundException e)
-			{
-		        System.out.println("Class " + "Filter" + processor_class + " not found");
-		        return;
+				System.out.println("Starting thread " + Integer.toString(i) + "...");
+		        Connection conn = DriverManager.getConnection(url, user, password);
+		        Manager manager = new Manager(conn, table, filter_class, messenger, i, chunk_size, threads, limit);
+				manager.start();
+				Thread.sleep((int)(Math.random() * 1000));
+				i++;
 			}
 			
-	        Manager manager = new Manager(conn, "SELECT * FROM " + table, threads, filter);
-	        StringBuilder error = manager.run(0, chunk_size, limit);
-	        
-	        if (error.length() > 0)
-	        {
-	        	System.out.println("Finished with errors:");
-	        	System.out.println(error);
-	        }
-	        else
-	        {
-	        	System.out.println("Finished!");
-	        }
+			System.out.println("Running...");
+			
+			int running = threads;
+			int errors = 0;
+			int chunks = 0;
+			while (running > 0)
+			{
+				Status status = messenger.take();
+				switch (status.offset)
+				{
+				case -1:
+					// Thread complete
+					running--;
+					break;
+				case -2:
+					// Thread complete with errors
+					running--;
+					errors++;
+					break;
+				default:
+					// Offset update
+					statuses[status.id] = status.offset;
+					chunks++;
+					System.out.print(Integer.toString(chunks) + "\r");
+				}
+			}
+			
+			if (errors == 0)
+			{
+				System.out.println("All threads completed successfully!");
+			}
+			else
+			{
+				System.out.println("All threads finished, " + Integer.toString(errors) + " because of errors :(");
+			}
+			
+			// slow: 16 -> 18
+			// fast: 18 -> 18
+			
+			// If the fastest thread's chunk offset is more than 9/8 of the slowest thread's chunk offset and the slowest thread's chunk offset is more than 16:
+			// Signal slowest child thread to skip next chunk
+			// Child thread sends chunk id to main thread
+			// Main thread sends chunk id to fastest child thread
 		}
 		catch (SQLException ex)
 		{
-			ex.printStackTrace();
 		    System.out.println("SQLException: " + ex.getMessage());
 		    System.out.println("SQLState: " + ex.getSQLState());
 		    System.out.println("VendorError: " + ex.getErrorCode());
+			ex.printStackTrace();
 		}
-		catch (InterruptedException e)
+		catch (InterruptedException ex)
 		{
-			e.printStackTrace();
+			System.out.println("InterruptedException: " + ex.getMessage());
+			ex.printStackTrace();
 		}
 	}
 }

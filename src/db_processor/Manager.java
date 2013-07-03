@@ -4,75 +4,159 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
-import db_processor.filter.FilterCleanHtml;
-
-public class Manager
+public class Manager extends Thread
 {
 	private Connection conn;
-	private int threads;
-	private int max_queue;
+	private String sql;
+	private String filter_class;
+	private LinkedBlockingQueue<Status> messenger;
+	private int id;
 	
-	private ThreadPoolExecutor exec;
-	
-	private String count_sql;
-	private String select_sql;
+	private volatile Integer offset;
+	private int chunk_size;
+	private int step;
+	private int limit;
+
+	private LinkedBlockingQueue<Integer> extra;
 	
 	public volatile StringBuilder error = new StringBuilder();
 	public volatile boolean cont = true;
 	
-	public Manager(Connection conn, String sql, int threads, Class processor_class) throws SQLException
+	public Manager(Connection conn, String table, String filter_class, LinkedBlockingQueue<Status> messenger, int offset, int chunk_size, int step, int limit)
 	{
 		this.conn = conn;
-		this.threads = threads;
-		this.max_queue = threads * 2;
-		
-		exec = new ThreadPoolExecutor(threads, threads, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+		this.sql = "SELECT * FROM " + table + " LIMIT ?,?";
+		this.filter_class = filter_class;
+		this.messenger = messenger;
+		this.id = offset;
 
-		count_sql = sql.replace("SELECT * FROM", "SELECT COUNT(*) FROM");
-		select_sql = sql + " LIMIT ";
+		this.offset = offset * chunk_size;
+		this.chunk_size = chunk_size;
+		this.step = step * chunk_size;
+		this.limit = limit;
+		
+		extra = new LinkedBlockingQueue<Integer>();
 	}
 	
-	public StringBuilder run(int offset, int chunk_size, int limit) throws SQLException, InterruptedException
+	public int skip_next()
 	{
-		ProgressBar progress = new ProgressBar(Math.min(get_max(), limit), 50, " rows");
-		
-		do
-		{
-			int get = Math.min(chunk_size, limit - offset);
-			if (get <= 0) {cont = false; continue;}
-
-			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE).executeQuery(select_sql + Integer.toString(offset) + "," + Integer.toString(get));
-			
-			Filter filter = new FilterCleanHtml();
-			filter.init(this, res);
-			exec.execute(filter);
-
-			offset += chunk_size;
-			progress.set_cur(offset);
-			
-			synchronized(this)
-			{
-				while (exec.getQueue().size() >= max_queue)
-				{
-					wait();
-				}
-			}
-		} while (cont);
-		
-		progress.end();
-		
-		exec.shutdown();
-		exec.awaitTermination(100, TimeUnit.DAYS);
-		
-		return error;
+		return next_offset();
 	}
 	
+	public void add_extra(int offset) throws InterruptedException
+	{
+		extra.offer(offset);
+	}
+	
+	public void run()
+	{
+		// This method runs in a child thread
+		
+		Filter filter;
+		try
+		{
+			filter = (Filter) Class.forName("db_processor.filter.Filter" + filter_class).newInstance();
+		}
+		catch (ClassNotFoundException e)
+		{
+	        System.out.println("ClassNotFoundException for class " + "Filter" + filter_class);
+	        error(); return;
+		}
+		catch (InstantiationException e)
+		{
+			System.out.println("InstantiationException for class " + "Filter" + filter_class);
+			error(); return;
+		}
+		catch (IllegalAccessException e)
+		{
+			System.out.println("IllegalAccessException for class " + "Filter" + filter_class);
+			error(); return;
+		}
+		
+		PreparedStatement stmt;
+		try
+		{
+			stmt = conn.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE);
+		}
+		catch (SQLException ex)
+		{
+		    System.out.println("SQLException: " + ex.getMessage());
+		    System.out.println("SQLState: " + ex.getSQLState());
+		    System.out.println("VendorError: " + ex.getErrorCode());
+			ex.printStackTrace();
+			error(); return;
+		}
+		
+		while (true)
+		{
+			Integer cur_offset = extra.poll();
+			if (cur_offset == null)
+			{
+				cur_offset = next_offset();
+			}
+			int get = Math.min(chunk_size, limit - cur_offset);
+			if (get <= 0) {complete(); return;}
+
+			try
+			{
+				stmt.setInt(1, cur_offset);
+				stmt.setInt(2, get);
+				
+				ResultSet res = stmt.executeQuery();
+				
+				int i = 0;
+				while (res.next())
+				{
+					try // This sub try/catch is so that exceptions thrown by processing a single row don't prevent processing the rest of the chunk.
+					{
+						filter.process(res);
+					}
+					catch (SQLException ex)
+					{
+					    System.out.println("SQLException: " + ex.getMessage());
+					    System.out.println("SQLState: " + ex.getSQLState());
+					    System.out.println("VendorError: " + ex.getErrorCode());
+						ex.printStackTrace();
+					}
+					i++;
+				}
+				res.close();
+				if (i == 0) {complete(); return;}
+			}
+			catch (SQLException ex)
+			{
+			    System.out.println("SQLException: " + ex.getMessage());
+			    System.out.println("SQLState: " + ex.getSQLState());
+			    System.out.println("VendorError: " + ex.getErrorCode());
+				ex.printStackTrace();
+			}
+		}
+	}
+	
+	private int next_offset()
+	{
+		synchronized (offset)
+		{
+			int res = offset;
+			messenger.offer(new Status(id, res));
+			offset += step;
+			return res;
+		}
+	}
+
+	private void complete()
+	{
+		messenger.offer(new Status(id, -1));
+	}
+	private void error()
+	{
+		messenger.offer(new Status(id, -2));
+	}
+	
+	/*
 	private int get_max() throws SQLException
 	{
 		ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY).executeQuery(count_sql);
@@ -85,4 +169,5 @@ public class Manager
 			return 0;
 		}
 	}
+	*/
 }
