@@ -1,21 +1,15 @@
 package db_processor;
 
 import java.sql.Connection;
-import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
-import db_processor.filter.FilterCleanHtml;
-
 public class Manager
 {
 	private Connection conn;
-	private int threads;
 	private int max_queue;
 	private Class<Filter> filter;
 	
@@ -29,7 +23,6 @@ public class Manager
 	public Manager(Connection conn, String sql, int threads, Class<Filter> filter) throws SQLException
 	{
 		this.conn = conn;
-		this.threads = threads;
 		this.max_queue = threads * 2;
 		this.filter = filter;
 		

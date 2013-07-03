@@ -2,17 +2,13 @@ package db_processor;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.Statement;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class DbProcessor
 {
 	static final String DB_JDBC_DRIVER = "com.mysql.jdbc.Driver";  
 
+	@SuppressWarnings("unchecked")
 	public static void main(String[] args)
 	{
 		// Test args:
