@@ -50,6 +50,5 @@ public abstract class Filter implements Runnable
 		}
 	}
 	
-	protected void init() {};
 	abstract protected void process(ResultSet row) throws SQLException;
 }
