@@ -1,8 +1,20 @@
 package db_processor;
 
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Scanner;
 
 public class DbProcessor
 {
@@ -24,6 +36,7 @@ public class DbProcessor
 		if (filter_class.toLowerCase() == "list")
 		{
 			System.out.println("CleanHtml");
+			System.out.println("CountStartWords");
 			return;
 		}
 		
@@ -35,7 +48,7 @@ public class DbProcessor
 		String table = "";
 		int threads = 16;
 		int chunk_size = 1000;
-		int limit = Integer.MAX_VALUE;
+		long limit = Long.MAX_VALUE;
 		
 		int i = 1;
 		int c = args.length - 1;
@@ -125,10 +138,64 @@ public class DbProcessor
 		        return;
 			}
 			
+			System.out.println("Please verify these parameters:");
+			System.out.println("	processor: " + filter_class);
+			System.out.println("	host: " + host);
+			System.out.println("	port: " + port);
+			System.out.println("	user: " + user);
+			System.out.println("	database: " + db);
+			System.out.println("	table: " + table);
+			System.out.println("	chunk size: " + Integer.toString(chunk_size));
+			System.out.println("	limit: " + Long.toString(limit));
+			System.out.println("	threads: " + Integer.toString(threads));
+			System.out.print("Continue (Y/N)? ");
+			
+		    Scanner input = new Scanner(System.in);
+		    String answer = input.nextLine();
+		    if (!answer.startsWith("Y") && !answer.startsWith("y"))
+		    {
+		    	System.out.println("Cancelled :(");
+		    	return;
+		    }
+			
 	        Manager manager = new Manager(conn, "SELECT * FROM " + table, threads, filter);
 	        manager.run(0, chunk_size, limit);
 	        
 	        System.out.println("Finished!");
+	        
+	        if (!manager.counts.isEmpty())
+	        {
+	        	System.out.println("Counts:");
+	        	List<Map.Entry<String, int[]>> counts = new LinkedList<Map.Entry<String, int[]>>(manager.counts.entrySet());
+	            Collections.sort(counts, new Comparator<Map.Entry<String, int[]>>()
+	            {
+	                public int compare(Map.Entry<String, int[]> m1, Map.Entry<String, int[]> m2)
+	                {
+	                    return m2.getValue()[0] - m1.getValue()[0];
+	                }
+	            });
+
+		        PrintWriter file = new PrintWriter("counts.txt");
+	            i = 0;
+	            Iterator<Map.Entry<String, int[]>> it = counts.iterator();
+	        	while (it.hasNext())
+	        	{
+	        		Map.Entry<String, int[]> e = it.next();
+	        		String str = e.getKey() + ": " + Integer.toString(e.getValue()[0]);
+	        		file.println(str);
+	        		i++;
+	        		if (i <= 100)
+	        		{
+	        			System.out.println(str);
+	        		}
+	        	}
+	        	file.close();
+	        	
+	        	if (i > 100)
+	        	{
+	        		System.out.println("Output (" + Integer.toString(i) + " lines) truncated to 100 lines, see counts.txt for a full log.");
+	        	}
+	        }
 		}
 		catch (SQLException ex)
 		{
@@ -138,6 +205,10 @@ public class DbProcessor
 		    System.out.println("VendorError: " + ex.getErrorCode());
 		}
 		catch (InterruptedException e)
+		{
+			e.printStackTrace();
+		}
+		catch (FileNotFoundException e)
 		{
 			e.printStackTrace();
 		}

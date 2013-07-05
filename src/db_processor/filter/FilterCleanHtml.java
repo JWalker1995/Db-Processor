@@ -51,8 +51,8 @@ public class FilterCleanHtml extends Filter
 				k = str.indexOf(">", i);
 				if (k == -1)
 				{
-					// Tag not closed
-					
+					// Tag not ended
+					//end_tag
 				}
 				if (j == -1 || k < j) {break;}
 				

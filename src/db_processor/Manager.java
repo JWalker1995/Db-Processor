@@ -3,6 +3,7 @@ package db_processor;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -20,6 +21,9 @@ public class Manager
 	
 	public volatile boolean cont = true;
 	
+	// int[] will only ever have one item. The reason it's not just an Integer is because it needs to be mutable.
+	public volatile ConcurrentHashMap<String, int[]> counts = new ConcurrentHashMap<String, int[]>();
+	
 	public Manager(Connection conn, String sql, int threads, Class<Filter> filter) throws SQLException
 	{
 		this.conn = conn;
@@ -32,16 +36,16 @@ public class Manager
 		select_sql = sql + " LIMIT ";
 	}
 	
-	public void run(int offset, int chunk_size, int limit) throws SQLException, InterruptedException
+	public void run(int offset, int chunk_size, long limit) throws SQLException, InterruptedException
 	{
 		ProgressBar progress = new ProgressBar(Math.min(get_max(), limit), 50, " rows");
 		
 		do
 		{
-			int get = Math.min(chunk_size, limit - offset);
+			long get = Math.min(chunk_size, limit - offset);
 			if (get <= 0) {cont = false; continue;}
 
-			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE).executeQuery(select_sql + Integer.toString(offset) + "," + Integer.toString(get));
+			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE).executeQuery(select_sql + Integer.toString(offset) + "," + Long.toString(get));
 			
 			Filter filter_inst;
 			try
@@ -77,12 +81,12 @@ public class Manager
 		exec.awaitTermination(100, TimeUnit.DAYS);
 	}
 	
-	private int get_max() throws SQLException
+	private long get_max() throws SQLException
 	{
 		ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY).executeQuery(count_sql);
 		if (res.next())
 		{
-			return res.getInt("COUNT(*)");
+			return res.getLong("COUNT(*)");
 		}
 		else
 		{

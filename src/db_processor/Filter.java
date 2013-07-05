@@ -2,6 +2,7 @@ package db_processor;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 
 public abstract class Filter implements Runnable
 {
@@ -51,4 +52,21 @@ public abstract class Filter implements Runnable
 	}
 	
 	abstract protected void process(ResultSet row) throws SQLException;
+	
+	protected void count(String key)
+	{
+		count(key, 1);
+	}
+	protected void count(String key, int count)
+	{
+		int[] val = manager.counts.get(key);
+		if (val == null)
+		{
+			manager.counts.put(key, new int[] {count});
+		}
+		else
+		{
+			val[0] += count;
+		}
+	}
 }
