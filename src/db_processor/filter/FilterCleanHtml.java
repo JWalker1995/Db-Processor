@@ -94,6 +94,7 @@ public class FilterCleanHtml extends Filter
 		{
 			row.updateString("text", str.toString());
 			row.updateRow();
+			count("updated");
 		}
 	}
 }
