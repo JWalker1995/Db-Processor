@@ -136,8 +136,8 @@ public class DbProcessor
 		        System.out.println("Class " + DB_JDBC_DRIVER + " not found");
 		        return;
 			}
-	        //Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
-	        //System.out.println("Connected to database...");
+	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
+	        System.out.println("Connected to database...");
 	        	        
 	        Class<Filter> filter;
 			try
@@ -188,10 +188,6 @@ public class DbProcessor
 		    	System.out.println("Cancelled :(");
 		    	return;
 		    }
-
-			// Temporarily here
-	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
-	        System.out.println("Connected to database...");
 			
 	        Manager manager = new Manager(conn, sql, threads, filter);
 	        manager.run(offset, chunk_size, limit);

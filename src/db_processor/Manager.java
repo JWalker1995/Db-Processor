@@ -39,7 +39,7 @@ public class Manager
 	public void run(int offset, int chunk_size, long limit) throws SQLException, InterruptedException
 	{
 		ProgressBar progress = new ProgressBar(Math.min(get_max(), limit), 50, " rows");
-		
+
 		do
 		{
 			long get = Math.min(chunk_size, limit - offset);
@@ -78,7 +78,7 @@ public class Manager
 		progress.end();
 		
 		exec.shutdown();
-		exec.awaitTermination(1, TimeUnit.DAYS);
+		exec.awaitTermination(1, TimeUnit.HOURS);
 	}
 	
 	private long get_max() throws SQLException
