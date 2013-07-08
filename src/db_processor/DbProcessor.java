@@ -43,7 +43,10 @@ public class DbProcessor
 		String user = "";
 		String password = "";
 		String table = "";
+		String where = "";
+		String sql = "";
 		int threads = 16;
+		int offset = 0;
 		int chunk_size = 1000;
 		long limit = Long.MAX_VALUE;
 		
@@ -67,7 +70,7 @@ public class DbProcessor
 			{
 				user = args[++i];
 			}
-			else if (args[i].equals("-w") || args[i].equals("--password"))
+			else if (args[i].equals("-a") || args[i].equals("--password"))
 			{
 				password = args[++i];
 			}
@@ -75,9 +78,21 @@ public class DbProcessor
 			{
 				table = args[++i];
 			}
+			else if (args[i].equals("-w") || args[i].equals("--where"))
+			{
+				where = args[++i];
+			}
+			else if (args[i].equals("-q") || args[i].equals("--sql"))
+			{
+				sql = args[++i];
+			}
 			else if (args[i].equals("-x") || args[i].equals("--threads"))
 			{
 				threads = Integer.parseInt(args[++i]);
+			}
+			else if (args[i].equals("-o") || args[i].equals("--offset"))
+			{
+				offset = Integer.parseInt(args[++i]);
 			}
 			else if (args[i].equals("-c") || args[i].equals("--chunk"))
 			{
@@ -94,17 +109,17 @@ public class DbProcessor
 			i++;
 		}
 		
-		if (db.isEmpty())
-		{
-			System.out.println("Please specify a database with -d or --db");
-			return;
-		}
 		if (user.isEmpty())
 		{
 			System.out.println("Please specify a user with -u or --user");
 			return;
 		}
-		if (table.isEmpty())
+		if (db.isEmpty())
+		{
+			System.out.println("Please specify a database with -d or --db");
+			return;
+		}
+		if (table.isEmpty() && sql.isEmpty())
 		{
 			System.out.println("Please specify a table with -t or --table");
 			return;
@@ -121,8 +136,8 @@ public class DbProcessor
 		        System.out.println("Class " + DB_JDBC_DRIVER + " not found");
 		        return;
 			}
-	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
-	        System.out.println("Connected to database...");
+	        //Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
+	        //System.out.println("Connected to database...");
 	        	        
 	        Class<Filter> filter;
 			try
@@ -135,13 +150,32 @@ public class DbProcessor
 		        return;
 			}
 			
+			if (sql.isEmpty())
+			{
+				if (where.isEmpty())
+				{
+					sql = "SELECT * FROM " + table;
+				}
+				else
+				{
+					sql = "SELECT * FROM " + table + " WHERE " + where;
+				}
+			}
+			
+			// Trim and remove trailing ";"
+			while ((sql = sql.trim()).endsWith(";"))
+			{
+				sql = sql.substring(0, sql.length() - 1);
+			}
+			
 			System.out.println("Please verify these parameters:");
 			System.out.println("	processor: " + filter_class);
 			System.out.println("	host: " + host);
 			System.out.println("	port: " + port);
 			System.out.println("	user: " + user);
 			System.out.println("	database: " + db);
-			System.out.println("	table: " + table);
+			System.out.println("	sql: " + sql);
+			System.out.println("	offset: " + Integer.toString(offset));
 			System.out.println("	chunk size: " + Integer.toString(chunk_size));
 			System.out.println("	limit: " + Long.toString(limit));
 			System.out.println("	threads: " + Integer.toString(threads));
@@ -154,9 +188,13 @@ public class DbProcessor
 		    	System.out.println("Cancelled :(");
 		    	return;
 		    }
+
+			// Temporarily here
+	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
+	        System.out.println("Connected to database...");
 			
-	        Manager manager = new Manager(conn, "SELECT * FROM " + table, threads, filter);
-	        manager.run(0, chunk_size, limit);
+	        Manager manager = new Manager(conn, sql, threads, filter);
+	        manager.run(offset, chunk_size, limit);
 	        
 	        System.out.println("Finished!");
 	        

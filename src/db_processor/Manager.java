@@ -78,7 +78,7 @@ public class Manager
 		progress.end();
 		
 		exec.shutdown();
-		exec.awaitTermination(100, TimeUnit.DAYS);
+		exec.awaitTermination(1, TimeUnit.DAYS);
 	}
 	
 	private long get_max() throws SQLException

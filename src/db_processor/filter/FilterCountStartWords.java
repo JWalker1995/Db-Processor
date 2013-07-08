@@ -7,6 +7,8 @@ import db_processor.Filter;
 
 public class FilterCountStartWords extends Filter
 {
+	// Testing Filter
+	
 	public FilterCountStartWords()
 	{
 		// Will be run less often than process()

@@ -47,8 +47,10 @@ public class ProgressBar
 		{
 			int perc = (int) Math.floor(cur * 100 / max);
 			int bar = (int) Math.floor(cur * width / max);
-	
-			System.out.print(Integer.toString(perc) + "% [" + repeat('=', bar) + repeat(' ', width - bar) + "] " + Long.toString(cur) + unit + "\r");
+			
+			String.format("%010d", perc);
+			
+			System.out.print(String.format("%3s", perc) + "% [" + repeat('=', bar) + repeat(' ', width - bar) + "] " + Long.toString(cur) + unit + "\r");
 		}
 	}
 	private StringBuilder repeat(char c, int n)

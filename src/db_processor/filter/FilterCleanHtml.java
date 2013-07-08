@@ -20,9 +20,15 @@ public class FilterCleanHtml extends Filter
 		// Whether to fix invalid nesting: <i>Italic <b>Bold & Italic</i> Bold</b>
 		boolean fix_invalid_nesting = false;
 		
-		// Ending a non-started tag will remove the ending tag.
-		// Ending a incorrectly nested tag will end tags up to the starting tag.
-		// Unended tags will be appended to the end
+		// Closing a non-opened tag will remove the closing tag.
+		// Closing a incorrectly nested tag will end tags up to the opening tag.
+		// Unclosed tags will be appended to the string
+		
+		// Don't confuse closing tags and tag endings:
+		// <div>Closing Tags</div>
+		//                  ^
+		// <div>Tag Endings</div>
+		//     ^                ^
 		
 		// <d><a><b></a></b></c>
 		// <d><a><b></b></a></b></c>
@@ -35,43 +41,78 @@ public class FilterCleanHtml extends Filter
 		
 		int start;
 		int end = 0;
-		while ((start = str.indexOf("<", end)) != -1)
+		tag: while ((start = str.indexOf("<", end)) != -1)
 		{
 			// Is open or close tag?
+			while (str.charAt(++start) == ' ');
+			boolean end_tag = str.charAt(start) == '/';
+			if (end_tag) {start++;}
 			int i = start;
-			while (Character.isWhitespace(str.charAt(++i)));
-			boolean end_tag = str.charAt(i) == '/';
-			if (end_tag) {i++;}
 			
 			// Find end of tag
-			int j, k;
+			int quote_i;
 			while (true)
 			{
-				j = Math.min(str.indexOf("\"", i), str.indexOf("'", i));
-				k = str.indexOf(">", i);
-				if (k == -1)
+				quote_i = Math.min(str.indexOf("\"", i), str.indexOf("'", i));
+				end = str.indexOf(">", i);
+				if (end == -1)
 				{
 					// Tag not ended
-					//end_tag
+					count("Tag not ended");
+					break tag;
 				}
-				if (j == -1 || k < j) {break;}
+				if (quote_i == -1 || end < quote_i) {break;}
 				
 				// If a quote comes before a ">", find the end quote:
-				String quote = str.substring(j, j + 1);
-				do
+				String quote = str.substring(quote_i, ++quote_i);
+				i = str.indexOf(quote, quote_i) + 1;
+				if (i == 0)
 				{
-					j = str.indexOf(quote, j + 1);
-				} while (str.charAt(j - 1) == '\\');
+					// Quote not ended
+					count("Quote not ended");
+					i = quote_i;
+				}
 			}
 			
-			String tag = "div";
+			// Extract tag
+			int space = str.indexOf(" ", start);
+			if (space == -1) {space = end;}
+			String tag = str.substring(start, Math.min(space, end));
+			
 			if (end_tag)
 			{
-				if (!tags.removeLastOccurrence(tag))
+				if (fix_invalid_nesting)
 				{
-					// If there was no starting tag, remove the end tag.
-					str.replace(start, end, "");
-					changed = true;
+					if (tags.contains(tag))
+					{
+						// If this tag was opened
+						StringBuilder insert = new StringBuilder();
+						String poll;
+						while (!(poll = tags.pollLast()).equals(tag))
+						{
+							insert.append("</" + poll + ">");
+						}
+						if (insert.length() > 0)
+						{
+							str.insert(end + 1, insert);
+							changed = true;
+						}
+					}
+					else
+					{
+						// If this tag was not opened, remove the end tag
+						str.replace(start, end, "");
+						changed = true;
+					}
+				}
+				else
+				{
+					if (!tags.removeLastOccurrence(tag))
+					{
+						// If this tag was not opened, remove the end tag
+						str.replace(start, end, "");
+						changed = true;
+					}
 				}
 			}
 			else
@@ -80,6 +121,7 @@ public class FilterCleanHtml extends Filter
 			}
 		}
 		
+		// Add unclosed tags
 		if (!tags.isEmpty())
 		{
 			ListIterator<String> i = tags.listIterator();
@@ -92,9 +134,12 @@ public class FilterCleanHtml extends Filter
 		
 		if (changed)
 		{
+			count(row.getString("text") + " -> " + str.toString());
+			
 			row.updateString("text", str.toString());
 			row.updateRow();
 			count("updated");
 		}
+		count("processed");
 	}
 }
