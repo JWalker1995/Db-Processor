@@ -10,6 +10,8 @@ public abstract class Filter implements Runnable
 	private ResultSet rows;
 	protected HashMap<String, String> opts;
 	
+	private StringBuilder local_log = new StringBuilder();
+	
 	final public void init(Manager manager, ResultSet rows, HashMap<String, String> opts)
 	{
 		this.manager = manager;
@@ -51,6 +53,11 @@ public abstract class Filter implements Runnable
 		{
 			manager.notify();
 		}
+		
+		if (local_log.length() > 0)
+		{
+			manager.log.append(local_log);
+		}
 	}
 
 	abstract protected String[] get_params();
@@ -71,5 +78,17 @@ public abstract class Filter implements Runnable
 		{
 			val[0] += count;
 		}
+	}
+	protected void log()
+	{
+		local_log.append("\n");
+	}
+	protected void log(String line)
+	{
+		local_log.append(line + "\n");
+	}
+	protected void stop()
+	{
+		manager.cont = false;
 	}
 }

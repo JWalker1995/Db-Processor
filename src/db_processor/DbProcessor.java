@@ -21,12 +21,9 @@ public class DbProcessor
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args)
 	{
-		// Test args:
-		// CleanHtml -d piqa -t node -u root -c 10 -l 100 -x 8
-		
 		if (args.length < 1)
 		{
-			System.out.println("Please specify the processor to run.");
+			System.out.println("Please specify the processor to run, or append \"help\".");
 			return;
 		}
 		
@@ -216,6 +213,14 @@ public class DbProcessor
 			System.out.println("	chunk size: " + Integer.toString(chunk_size));
 			System.out.println("	limit: " + Long.toString(limit));
 			System.out.println("	threads: " + Integer.toString(threads));
+			
+			Iterator<Map.Entry<String, String>> it = opts.entrySet().iterator();
+			while (it.hasNext())
+			{
+				Map.Entry<String, String> opt = it.next();
+				System.out.println("	" + opt.getKey() + ": " + (opt.getValue() == null ? "null" : opt.getValue()));
+			}
+			
 			System.out.print("Continue (Y/N)? ");
 			
 		    Scanner input = new Scanner(System.in);
@@ -245,10 +250,10 @@ public class DbProcessor
 
 		        PrintWriter file = new PrintWriter("counts.txt");
 	            i = 0;
-	            Iterator<Map.Entry<String, int[]>> it = counts.iterator();
-	        	while (it.hasNext())
+	            Iterator<Map.Entry<String, int[]>> it2 = counts.iterator();
+	        	while (it2.hasNext())
 	        	{
-	        		Map.Entry<String, int[]> e = it.next();
+	        		Map.Entry<String, int[]> e = it2.next();
 	        		String str = e.getKey() + ": " + Integer.toString(e.getValue()[0]);
 	        		file.println(str);
 	        		i++;
@@ -261,8 +266,15 @@ public class DbProcessor
 	        	
 	        	if (i > 100)
 	        	{
-	        		System.out.println("Output (" + Integer.toString(i) + " lines) truncated to 100 lines, see counts.txt for a full log.");
+	        		System.out.println("Output (" + Integer.toString(i) + " lines) truncated to 100 lines, see counts.txt for a the full counts.");
 	        	}
+	        }
+	        if (manager.log.length() > 0)
+	        {
+	        	PrintWriter file = new PrintWriter("log.txt");
+	        	file.print(manager.log);
+	        	file.close();
+	        	System.out.println("Log written to log.txt");
 	        }
 		}
 		catch (SQLException ex)
@@ -285,11 +297,26 @@ public class DbProcessor
 	private static void print_list()
 	{
 		System.out.println("CleanHtml");
-		System.out.println("CountStartWords");
 	}
 	
 	private static void print_help()
 	{
-		System.out.println("Arguments:");
+		System.out.println("java -jar DbProcessor.jar [processor name] [options]");
+		System.out.println("java -jar DbProcessor.jar list");
+		System.out.println("java -jar DbProcessor.jar help");
+		System.out.println();
+		System.out.println("Options:");
+		System.out.println("	-h, --host");
+		System.out.println("	-p, --port");
+		System.out.println("	-d, --db");
+		System.out.println("	-u, --user");
+		System.out.println("	-a, --password");
+		System.out.println("	-t, --table");
+		System.out.println("	-w, --where");
+		System.out.println("	-q, --sql");
+		System.out.println("	-x, --threads");
+		System.out.println("	-o, --offset");
+		System.out.println("	-c, --chunk");
+		System.out.println("	-l, --limit");
 	}
 }

@@ -9,16 +9,11 @@ import db_processor.Filter;
 
 public class FilterCleanHtml extends Filter
 {
-	public FilterCleanHtml()
-	{
-		// Will be run less often than process()
-	}
-
 	@Override
 	protected String[] get_params()
 	{
 		// Whether to fix invalid nesting: <i>Italic <b>Bold & Italic</i> Bold</b>
-		return new String[] {"--fix-invalid-nesting"};
+		return new String[] {"--fix-invalid-nesting", "--update-db"};
 	}
 	
 	@Override
@@ -33,9 +28,12 @@ public class FilterCleanHtml extends Filter
 		//                  ^
 		// <div>Tag Endings</div>
 		//     ^                ^
+
+		// Should be run less often
+		boolean fix_invalid_nesting = opts.get("--fix-invalid-nesting") != null;
+		boolean update_db = opts.get("--update-db") != null;
 		
 		boolean changed = false;
-		boolean fix_invalid_nesting = opts.get("--fix-invalid-nesting") != null;
 		StringBuilder str = new StringBuilder(row.getString("text"));
 		LinkedList<String> tags = new LinkedList<String>();
 		
@@ -74,7 +72,7 @@ public class FilterCleanHtml extends Filter
 				if (i == 0)
 				{
 					// Quote not ended
-					count("Quote not ended: " + row.getString("text"));
+					count("Quote not ended");
 					i = quote_i;
 				}
 			}
@@ -155,10 +153,17 @@ public class FilterCleanHtml extends Filter
 		
 		if (changed)
 		{
-			count(row.getString("text") + "\r\n" + str.toString());
-			
-			//row.updateString("text", str.toString());
-			//row.updateRow();
+			if (update_db)
+			{
+				row.updateString("text", str.toString());
+				row.updateRow();
+			}
+			else
+			{
+				log(row.getString("text"));
+				log(str.toString());
+				log();
+			}
 			count("updated");
 		}
 		count("processed");

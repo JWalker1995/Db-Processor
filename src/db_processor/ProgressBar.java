@@ -2,23 +2,37 @@ package db_processor;
 
 public class ProgressBar
 {
+	private long min;
 	private long cur;
 	private long max;
+	private long range;
 	private int width;
 	private String unit;
 	
-	public ProgressBar(long max, int width, String unit)
+	public ProgressBar(long min, long max, int width, String unit)
 	{
-		this.cur = 0;
+		this.min = min;
+		this.cur = min;
 		this.max = max;
+		this.range = max - min;
+		if (this.range <= 0) {this.range = 0;}
 		this.width = width;
 		this.unit = unit;
 		update();
 	}
 	
+	public void set_min(long min)
+	{
+		if (cur < min) {cur = min;}
+		else if (min > max) {min = max;}
+		
+		this.min = min;
+		this.range = max - min;
+		update();
+	}
 	public void set_cur(long cur)
 	{
-		if (cur < 0) {cur = 0;}
+		if (cur < min) {cur = min;}
 		else if (cur > max) {cur = max;}
 		
 		this.cur = cur;
@@ -26,10 +40,11 @@ public class ProgressBar
 	}
 	public void set_max(long max)
 	{
-		if (max < 0) {max = 0;}
-		else if (max < cur) {max = cur;}
+		if (cur > max) {cur = max;}
+		else if (max < min) {max = min;}
 		
 		this.max = max;
+		this.range= max - min;
 		update();
 	}
 	public void end()
@@ -39,18 +54,20 @@ public class ProgressBar
 	
 	protected void update()
 	{
+		long offset = cur - min;
+		
 		if (max == 0)
 		{
-			System.out.print(Long.toString(cur) + unit + "\r");
+			System.out.print(Long.toString(offset) + unit + "\r");
 		}
 		else
 		{
-			int perc = (int) Math.floor(cur * 100 / max);
-			int bar = (int) Math.floor(cur * width / max);
+			int perc = (int) Math.floor(offset * 100 / range);
+			int bar = (int) Math.floor(offset * width / range);
 			
 			String.format("%010d", perc);
 			
-			System.out.print(String.format("%3s", perc) + "% [" + repeat('=', bar) + repeat(' ', width - bar) + "] " + Long.toString(cur) + unit + "\r");
+			System.out.print(String.format("%3s", perc) + "% [" + repeat('=', bar) + repeat(' ', width - bar) + "] " + Long.toString(offset) + unit + "\r");
 		}
 	}
 	private StringBuilder repeat(char c, int n)
