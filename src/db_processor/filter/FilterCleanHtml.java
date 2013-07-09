@@ -13,13 +13,17 @@ public class FilterCleanHtml extends Filter
 	{
 		// Will be run less often than process()
 	}
+
+	@Override
+	protected String[] get_params()
+	{
+		// Whether to fix invalid nesting: <i>Italic <b>Bold & Italic</i> Bold</b>
+		return new String[] {"--fix-invalid-nesting"};
+	}
 	
 	@Override
 	public void process(ResultSet row) throws SQLException
 	{
-		// Whether to fix invalid nesting: <i>Italic <b>Bold & Italic</i> Bold</b>
-		boolean fix_invalid_nesting = false;
-		
 		// Closing a non-opened tag will remove the closing tag.
 		// Closing a incorrectly nested tag will end tags up to the opening tag.
 		// Unclosed tags will be appended to the string
@@ -31,6 +35,7 @@ public class FilterCleanHtml extends Filter
 		//     ^                ^
 		
 		boolean changed = false;
+		boolean fix_invalid_nesting = opts.get("--fix-invalid-nesting") != null;
 		StringBuilder str = new StringBuilder(row.getString("text"));
 		LinkedList<String> tags = new LinkedList<String>();
 		
@@ -49,19 +54,19 @@ public class FilterCleanHtml extends Filter
 			// Find end of tag
 			while (true)
 			{
-				int quote1 = str.indexOf("\"", i);
-				int quote2 = str.indexOf("'", i);
+				int quote1 = str.indexOf("'", i);
+				int quote2 = str.indexOf("\"", i);
 				int quote_i = quote1 == -1 ? quote2 : (quote2 == -1 ? quote1 : Math.min(quote1, quote2));
 				
-				end = str.indexOf(">", i);
-				if (end == -1)
+				end = str.indexOf(">", i) + 1;
+				if (end == 0)
 				{
 					// Tag not ended
 					end = str.length();
 					str.append(">");
 					changed = true;
 				}
-				if (quote_i == -1 || end < quote_i) {break;}
+				if (quote_i == -1 || end <= quote_i) {break;}
 				
 				// If a quote comes before a ">", find the end quote:
 				String quote = str.substring(quote_i, ++quote_i);
@@ -75,7 +80,7 @@ public class FilterCleanHtml extends Filter
 			}
 			
 			// Continue on tags that are self-closed: <br />
-			i = end;
+			i = end - 1;
 			while (str.charAt(--i) == ' ');
 			if (str.charAt(i) == '/') {continue tag;}
 			
@@ -83,7 +88,6 @@ public class FilterCleanHtml extends Filter
 			i = tag_start;
 			while (i < str.length() && Character.isLetterOrDigit(str.charAt(i++)));
 			String tag = str.substring(tag_start, i - 1).toLowerCase();
-			System.out.println(tag);
 			
 			// Continue on void tags: area, base, br, col, embed, hr, img, input, keygen, link, menuitem, meta, param, source, track, wbr
 			// http://www.w3.org/html/wg/drafts/html/master/syntax.html#void-elements
@@ -99,7 +103,7 @@ public class FilterCleanHtml extends Filter
 				{
 					if (tags.contains(tag))
 					{
-						// If this tag was opened
+						// If this tag was opened previously, close all tags up to it
 						StringBuilder insert = new StringBuilder();
 						String poll;
 						while (!(poll = tags.pollLast()).equals(tag))
@@ -108,14 +112,16 @@ public class FilterCleanHtml extends Filter
 						}
 						if (insert.length() > 0)
 						{
-							str.insert(end + 1, insert);
+							str.insert(start, insert);
+							end += insert.length();
 							changed = true;
 						}
 					}
 					else
 					{
 						// If this tag was not opened, remove the end tag
-						str.replace(start, end + 1, "");
+						str.replace(start, end, "");
+						end = start;
 						changed = true;
 					}
 				}
@@ -124,7 +130,8 @@ public class FilterCleanHtml extends Filter
 					if (!tags.removeLastOccurrence(tag))
 					{
 						// If this tag was not opened, remove the end tag
-						str.replace(start, end + 1, "");
+						str.replace(start, end, "");
+						end = start;
 						changed = true;
 					}
 				}
@@ -138,10 +145,10 @@ public class FilterCleanHtml extends Filter
 		// Add unclosed tags
 		if (!tags.isEmpty())
 		{
-			ListIterator<String> it = tags.listIterator();
-			while (it.hasNext())
+			ListIterator<String> it = tags.listIterator(tags.size());
+			while (it.hasPrevious())
 			{
-				str.append("</" + it.next() + ">");
+				str.append("</" + it.previous() + ">");
 			}
 			changed = true;
 		}

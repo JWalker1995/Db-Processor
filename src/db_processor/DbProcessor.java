@@ -7,6 +7,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -30,11 +31,47 @@ public class DbProcessor
 		}
 		
 		String filter_class = args[0];
-		if (filter_class.toLowerCase() == "list")
+		if (filter_class.equals("list"))
 		{
-			System.out.println("CleanHtml");
-			System.out.println("CountStartWords");
+			print_list();
 			return;
+		}
+		else if (filter_class.equals("help"))
+		{
+			print_help();
+			return;
+		}
+		
+		Class<Filter> filter;
+		try
+		{
+			filter = (Class<Filter>) Class.forName("db_processor.filter.Filter" + filter_class);
+		}
+		catch (ClassNotFoundException e)
+		{
+	        System.out.println("Class " + "Filter" + filter_class + " not found");
+	        return;
+		}
+		
+		HashMap<String, String> opts = new HashMap<String, String>();
+		try
+		{
+			String[] params = filter.newInstance().get_params();
+			int i = 0;
+			int c = params.length;
+			while (i < c)
+			{
+				opts.put(params[i], null);
+				i++;
+			}
+		}
+		catch (InstantiationException e)
+		{
+			e.printStackTrace();
+		}
+		catch (IllegalAccessException e)
+		{
+			e.printStackTrace();
 		}
 		
 		String host = "127.0.0.1";
@@ -54,6 +91,8 @@ public class DbProcessor
 		int c = args.length - 1;
 		while (i < c)
 		{
+			boolean unrecognized = false;
+			
 			if (args[i].equals("-h") || args[i].equals("--host"))
 			{
 				host = args[++i];
@@ -104,6 +143,15 @@ public class DbProcessor
 			}
 			else
 			{
+				unrecognized = true;
+			}
+			
+			if (opts.containsKey(args[i]))
+			{
+				opts.put(args[i], args[++i]);
+			}
+			else if (unrecognized)
+			{
 				System.out.println("Warning: Unrecognized argument \"" + args[i] + "\"");
 			}
 			i++;
@@ -138,17 +186,6 @@ public class DbProcessor
 			}
 	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
 	        System.out.println("Connected to database...");
-	        	        
-	        Class<Filter> filter;
-			try
-			{
-				filter = (Class<Filter>) Class.forName("db_processor.filter.Filter" + filter_class);
-			}
-			catch (ClassNotFoundException e)
-			{
-		        System.out.println("Class " + "Filter" + filter_class + " not found");
-		        return;
-			}
 			
 			if (sql.isEmpty())
 			{
@@ -190,7 +227,7 @@ public class DbProcessor
 		    }
 			
 	        Manager manager = new Manager(conn, sql, threads, filter);
-	        manager.run(offset, chunk_size, limit);
+	        manager.run(opts, offset, chunk_size, limit);
 	        
 	        System.out.println("Finished!");
 	        
@@ -243,5 +280,16 @@ public class DbProcessor
 		{
 			e.printStackTrace();
 		}
+	}
+	
+	private static void print_list()
+	{
+		System.out.println("CleanHtml");
+		System.out.println("CountStartWords");
+	}
+	
+	private static void print_help()
+	{
+		System.out.println("Arguments:");
 	}
 }

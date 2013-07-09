@@ -3,6 +3,7 @@ package db_processor;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -36,7 +37,7 @@ public class Manager
 		select_sql = sql + " LIMIT ";
 	}
 	
-	public void run(int offset, int chunk_size, long limit) throws SQLException, InterruptedException
+	public void run(HashMap<String, String> opts, int offset, int chunk_size, long limit) throws SQLException, InterruptedException
 	{
 		ProgressBar progress = new ProgressBar(Math.min(get_max(), limit), 50, " rows");
 
@@ -51,7 +52,7 @@ public class Manager
 			try
 			{
 				filter_inst = filter.newInstance();
-				filter_inst.init(this, res);
+				filter_inst.init(this, res, opts);
 				exec.execute(filter_inst);
 			}
 			catch (InstantiationException e)

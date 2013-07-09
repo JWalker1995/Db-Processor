@@ -2,16 +2,19 @@ package db_processor;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 
 public abstract class Filter implements Runnable
 {
 	private Manager manager;
 	private ResultSet rows;
+	protected HashMap<String, String> opts;
 	
-	final public void init(Manager manager, ResultSet rows)
+	final public void init(Manager manager, ResultSet rows, HashMap<String, String> opts)
 	{
 		this.manager = manager;
 		this.rows = rows;
+		this.opts = opts;
 	}
 	
 	@Override
@@ -49,7 +52,8 @@ public abstract class Filter implements Runnable
 			manager.notify();
 		}
 	}
-	
+
+	abstract protected String[] get_params();
 	abstract protected void process(ResultSet row) throws SQLException;
 	
 	protected void count(String key)

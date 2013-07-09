@@ -13,6 +13,12 @@ public class FilterCountStartWords extends Filter
 	{
 		// Will be run less often than process()
 	}
+
+	@Override
+	protected String[] get_params()
+	{
+		return new String[] {};
+	}
 	
 	@Override
 	public void process(ResultSet row) throws SQLException
