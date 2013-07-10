@@ -1,5 +1,4 @@
 package db_processor;
-
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -296,7 +295,8 @@ public class DbProcessor
 	
 	private static void print_list()
 	{
-		System.out.println("CleanHtml");
+		System.out.println("Processors:");
+		System.out.println("	CleanHtml");
 	}
 	
 	private static void print_help()
