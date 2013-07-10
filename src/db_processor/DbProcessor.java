@@ -217,6 +217,7 @@ public class DbProcessor
 			System.out.println("	chunk size: " + Integer.toString(chunk_size));
 			System.out.println("	limit: " + Long.toString(limit));
 			System.out.println("	threads: " + Integer.toString(threads));
+			System.out.println("	memory limit: " + Long.toString(Runtime.getRuntime().maxMemory() / 1024 / 1024) + "MB (change with -Xmx[gigabytes]g)");
 			System.out.println("	update database: " + (update ? "YES" : "NO"));
 			
 			Iterator<Map.Entry<String, String>> it = opts.entrySet().iterator();
@@ -313,7 +314,7 @@ public class DbProcessor
 	
 	private static void print_help()
 	{
-		System.out.println("java -jar DbProcessor.jar [processor name] [options]");
+		System.out.println("java -Xmx[gigabytes]g -jar DbProcessor.jar [processor name] [options]");
 		System.out.println("java -jar DbProcessor.jar list");
 		System.out.println("java -jar DbProcessor.jar help");
 		System.out.println();
