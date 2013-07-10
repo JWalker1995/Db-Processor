@@ -4,7 +4,6 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -22,8 +21,7 @@ public class Manager
 	
 	public volatile boolean cont = true;
 	
-	// int[] will only ever have one item. The reason it's not just an Integer is because it needs to be mutable.
-	public volatile ConcurrentHashMap<String, int[]> counts = new ConcurrentHashMap<String, int[]>();
+	public volatile HashMap<String, int[]> counts = new HashMap<String, int[]>();
 	public volatile StringBuffer log = new StringBuffer();
 	
 	public Manager(Connection conn, String sql, int threads, Class<Filter> filter) throws SQLException
@@ -81,21 +79,9 @@ public class Manager
 		} while (cont);
 		
 		progress.end();
-		
-		/*
-		// Doesn't seem to work:
+
 		exec.shutdown();
 		exec.awaitTermination(1, TimeUnit.HOURS);
-		*/
-		
-		synchronized (this)
-		{
-			while (exec.getQueue().size() > 0)
-			{
-				wait();
-			}
-		}
-		Thread.sleep(2000);
 	}
 	
 	private long get_max() throws SQLException

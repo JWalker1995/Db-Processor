@@ -76,7 +76,10 @@ public abstract class Filter implements Runnable
 		}
 		else
 		{
-			val[0] += count;
+			synchronized (val)
+			{
+				val[0] += count;
+			}
 		}
 	}
 	protected void log()
