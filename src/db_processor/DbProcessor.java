@@ -1,4 +1,5 @@
 package db_processor;
+import java.io.Console;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.sql.Connection;
@@ -74,7 +75,6 @@ public class DbProcessor
 		String port = "3306";
 		String db = "";
 		String user = "";
-		String password = "";
 		String table = "";
 		String where = "";
 		String sql = "";
@@ -105,10 +105,6 @@ public class DbProcessor
 			else if (args[i].equals("-u") || args[i].equals("--user"))
 			{
 				user = args[++i];
-			}
-			else if (args[i].equals("-a") || args[i].equals("--password"))
-			{
-				password = args[++i];
 			}
 			else if (args[i].equals("-t") || args[i].equals("--table"))
 			{
@@ -185,7 +181,18 @@ public class DbProcessor
 		        System.out.println("Class " + DB_JDBC_DRIVER + " not found");
 		        return;
 			}
-	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, password);
+			
+			char password[];
+			Console console = System.console();
+			if (console == null)
+			{
+				password = new char[] {};
+			}
+			else
+			{
+				password = console.readPassword("Db password: ");
+			}
+	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, new String(password));
 	        System.out.println("Connected to database...");
 			
 			if (sql.isEmpty())
@@ -211,6 +218,7 @@ public class DbProcessor
 			System.out.println("	host: " + host);
 			System.out.println("	port: " + port);
 			System.out.println("	user: " + user);
+			System.out.println("	using password: " + (password.length > 0 ? "YES" : "NO"));
 			System.out.println("	database: " + db);
 			System.out.println("	sql: " + sql);
 			System.out.println("	offset: " + Integer.toString(offset));
@@ -323,7 +331,6 @@ public class DbProcessor
 		System.out.println("	-p, --port");
 		System.out.println("	-d, --db");
 		System.out.println("	-u, --user");
-		System.out.println("	-a, --password");
 		System.out.println("	-t, --table");
 		System.out.println("	-w, --where");
 		System.out.println("	-q, --sql");
