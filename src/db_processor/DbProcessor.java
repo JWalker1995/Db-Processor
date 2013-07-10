@@ -82,6 +82,7 @@ public class DbProcessor
 		int offset = 0;
 		int chunk_size = 1000;
 		long limit = Long.MAX_VALUE;
+		boolean update = false;
 		
 		int i = 1;
 		int c = args.length - 1;
@@ -136,6 +137,10 @@ public class DbProcessor
 			else if (args[i].equals("-l") || args[i].equals("--limit"))
 			{
 				limit = Integer.parseInt(args[++i]);
+			}
+			else if (args[i].equals("--update-db"))
+			{
+				update = !args[++i].isEmpty();
 			}
 			else
 			{
@@ -212,6 +217,7 @@ public class DbProcessor
 			System.out.println("	chunk size: " + Integer.toString(chunk_size));
 			System.out.println("	limit: " + Long.toString(limit));
 			System.out.println("	threads: " + Integer.toString(threads));
+			System.out.println("	update database: " + (update ? "YES" : "NO"));
 			
 			Iterator<Map.Entry<String, String>> it = opts.entrySet().iterator();
 			while (it.hasNext())
@@ -231,7 +237,7 @@ public class DbProcessor
 		    }
 			
 	        Manager manager = new Manager(conn, sql, threads, filter);
-	        manager.run(opts, offset, chunk_size, limit);
+	        manager.run(opts, update, offset, chunk_size, limit);
 	        
 	        System.out.println("Finished!");
 	        
@@ -275,6 +281,10 @@ public class DbProcessor
 	        	file.close();
 	        	System.out.println("Log written to log.txt");
 	        }
+	        if (!update)
+	        {
+	        	System.out.println("Add \"--update-db 1\" to update the database.");
+	        }
 		}
 		catch (SQLException ex)
 		{
@@ -297,6 +307,8 @@ public class DbProcessor
 	{
 		System.out.println("Processors:");
 		System.out.println("	CleanHtml");
+		System.out.println("	StripAnswerPlaceholders");
+		System.out.println("	StripAnswcdnGraphics");
 	}
 	
 	private static void print_help()
@@ -318,5 +330,6 @@ public class DbProcessor
 		System.out.println("	-o, --offset");
 		System.out.println("	-c, --chunk");
 		System.out.println("	-l, --limit");
+		System.out.println("	--update-db");
 	}
 }

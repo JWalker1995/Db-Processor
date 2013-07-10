@@ -36,7 +36,7 @@ public class Manager
 		select_sql = sql + " LIMIT ";
 	}
 	
-	public void run(HashMap<String, String> opts, int offset, int chunk_size, long limit) throws SQLException, InterruptedException
+	public void run(HashMap<String, String> opts, boolean update, int offset, int chunk_size, long limit) throws SQLException, InterruptedException
 	{
 		// Make limit absolute
 		limit += offset;
@@ -48,13 +48,13 @@ public class Manager
 			long get = Math.min(chunk_size, limit - offset);
 			if (get <= 0) {cont = false; continue;}
 
-			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE).executeQuery(select_sql + Integer.toString(offset) + "," + Long.toString(get));
+			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, update ? ResultSet.CONCUR_UPDATABLE : ResultSet.CONCUR_READ_ONLY).executeQuery(select_sql + Integer.toString(offset) + "," + Long.toString(get));
 			
 			Filter filter_inst;
 			try
 			{
 				filter_inst = filter.newInstance();
-				filter_inst.init(this, res, opts);
+				filter_inst.init(this, res, opts, update);
 				exec.execute(filter_inst);
 			}
 			catch (InstantiationException e)

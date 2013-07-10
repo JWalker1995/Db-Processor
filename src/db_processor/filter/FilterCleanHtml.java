@@ -13,7 +13,7 @@ public class FilterCleanHtml extends Filter
 	protected String[] get_params()
 	{
 		// Whether to fix invalid nesting: <i>Italic <b>Bold & Italic</i> Bold</b>
-		return new String[] {"--fix-invalid-nesting", "--update-db"};
+		return new String[] {"--fix-invalid-nesting"};
 	}
 	
 	@Override
@@ -31,7 +31,6 @@ public class FilterCleanHtml extends Filter
 
 		// Should be run less often
 		boolean fix_invalid_nesting = opts.get("--fix-invalid-nesting") != null;
-		boolean update_db = opts.get("--update-db") != null;
 		
 		boolean changed = false;
 		StringBuilder str = new StringBuilder(row.getString("text"));
@@ -44,7 +43,7 @@ public class FilterCleanHtml extends Filter
 			// Is open or close tag?
 			int start = i;
 			while (++i < str.length() && str.charAt(i) == ' ');
-			boolean end_tag = str.charAt(i) == '/';
+			boolean end_tag = i < str.length() && str.charAt(i) == '/';
 			if (end_tag) {i++;}
 			
 			int tag_start = i;
@@ -153,7 +152,7 @@ public class FilterCleanHtml extends Filter
 		
 		if (changed)
 		{
-			if (update_db)
+			if (update)
 			{
 				row.updateString("text", str.toString());
 				row.updateRow();
@@ -164,8 +163,8 @@ public class FilterCleanHtml extends Filter
 				log(str.toString());
 				log();
 			}
-			count("updated");
+			count("Updated");
 		}
-		count("processed");
+		count("Processed");
 	}
 }

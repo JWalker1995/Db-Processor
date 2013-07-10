@@ -9,14 +9,16 @@ public abstract class Filter implements Runnable
 	private Manager manager;
 	private ResultSet rows;
 	protected HashMap<String, String> opts;
+	protected boolean update;
 	
 	private StringBuilder local_log = new StringBuilder();
 	
-	final public void init(Manager manager, ResultSet rows, HashMap<String, String> opts)
+	final public void init(Manager manager, ResultSet rows, HashMap<String, String> opts, boolean update)
 	{
 		this.manager = manager;
 		this.rows = rows;
 		this.opts = opts;
+		this.update = update;
 	}
 	
 	@Override
