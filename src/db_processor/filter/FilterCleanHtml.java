@@ -94,6 +94,7 @@ public class FilterCleanHtml extends Filter
 	{
 		boolean changed = false;
 		LinkedList<String> tags = new LinkedList<String>();
+		boolean in_raw = false;
 		
 		int i;
 		int end = 0;
@@ -103,9 +104,16 @@ public class FilterCleanHtml extends Filter
 			int start = i;
 			while (++i < str.length() && str.charAt(i) == ' ');
 			boolean end_tag = i < str.length() && str.charAt(i) == '/';
-			if (end_tag) {i++;}
+			if (!end_tag) {i--;}
 			
-			int tag_start = i;
+			int tag_start = i + 1;
+			
+			while (++i < str.length() && Character.isLetterOrDigit(str.charAt(i)));
+			String tag = str.substring(tag_start, i).toLowerCase();
+			
+			// Continue when the pointer is in a raw text element and this element doesn't end the raw text element tag
+			// http://www.w3.org/html/wg/drafts/html/master/syntax.html#raw-text-elements
+			if (in_raw && !(end_tag && tag.equals(tags.peekLast()))) {end++; continue tag;}
 			
 			// Find end of tag
 			while (true)
@@ -140,11 +148,6 @@ public class FilterCleanHtml extends Filter
 			i = end - 1;
 			while (str.charAt(--i) == ' ');
 			if (str.charAt(i) == '/') {continue tag;}
-			
-			// Extract tag
-			i = tag_start;
-			while (i < str.length() && Character.isLetterOrDigit(str.charAt(i++)));
-			String tag = str.substring(tag_start, i - 1).toLowerCase();
 			
 			// Continue on empty tags. This also includes comments: <!-- text -->
 			if (tag.isEmpty()) {continue tag;}
@@ -195,10 +198,15 @@ public class FilterCleanHtml extends Filter
 						changed = true;
 					}
 				}
+				
+				in_raw = false;
 			}
 			else
 			{
 				tags.add(tag);
+				
+				// http://www.w3.org/html/wg/drafts/html/master/syntax.html#raw-text-elements
+				in_raw = tag.equals("script") || tag.equals("style");
 			}
 		}
 		
