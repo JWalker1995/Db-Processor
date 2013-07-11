@@ -2,6 +2,7 @@ package db_processor.filter;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,9 +23,9 @@ public abstract class FilterRemoveRegex extends Filter
 	protected abstract String get_regex();
 	
 	@Override
-	protected String[] get_params()
+	protected HashMap<String, String> get_params()
 	{
-		return new String[] {};
+		return new HashMap<String, String>();
 	}
 
 	@Override

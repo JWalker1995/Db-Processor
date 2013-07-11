@@ -2,6 +2,7 @@ package db_processor.filter;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.ListIterator;
 
@@ -9,11 +10,26 @@ import db_processor.Filter;
 
 public class FilterCleanHtml extends Filter
 {
+	private boolean opts_loaded = false;
+	private String column;
+	private int max_length;
+	private boolean fix_invalid_nesting;
+	
 	@Override
-	protected String[] get_params()
+	protected HashMap<String, String> get_params()
 	{
+		HashMap<String, String> res = new HashMap<String, String>();
+		
+		// The column to filter
+		res.put("--column", null);
+		
+		// The column length limit
+		res.put("--max-length", Integer.toString(Integer.MAX_VALUE));
+
 		// Whether to fix invalid nesting: <i>Italic <b>Bold & Italic</i> Bold</b>
-		return new String[] {"--fix-invalid-nesting"};
+		res.put("--fix-invalid-nesting", "");
+		
+		return res;
 	}
 	
 	@Override
@@ -29,11 +45,54 @@ public class FilterCleanHtml extends Filter
 		// <div>Tag Endings</div>
 		//     ^                ^
 
-		// Should be run less often
-		boolean fix_invalid_nesting = opts.get("--fix-invalid-nesting") != null;
+		if (!opts_loaded)
+		{
+			column = opts.get("--column");
+			if (column == null) {stop("Please specify a column with \"--column\""); return;}
+			
+			max_length = Integer.parseInt(opts.get("--max-length"));
+
+			fix_invalid_nesting = !opts.get("--fix-invalid-nesting").isEmpty();
+
+			opts_loaded = true;
+		}
 		
+		String orig = row.getString(column);
+		int use = Math.min(orig.length(), max_length);
+		
+		StringBuilder str;
+		boolean changed;
+		
+		while (true)
+		{
+			str = new StringBuilder(orig.substring(0, use));
+			changed = clean_html(str);
+			
+			if (str.length() <= max_length) {break;}
+			use -= str.length() - max_length;
+		}
+		
+		if (changed)
+		{
+			if (update)
+			{
+				row.updateString(column, str.toString());
+				row.updateRow();
+			}
+			else
+			{
+				log(orig);
+				log(str.toString());
+				log();
+			}
+			count("Updated");
+		}
+		count("Processed");
+	}
+	
+	private boolean clean_html(StringBuilder str)
+	{
 		boolean changed = false;
-		StringBuilder str = new StringBuilder(row.getString("text"));
 		LinkedList<String> tags = new LinkedList<String>();
 		
 		int i;
@@ -71,8 +130,9 @@ public class FilterCleanHtml extends Filter
 				if (i == 0)
 				{
 					// Quote not ended
-					count("Quote not ended");
-					i = quote_i;
+					str.append(quote);
+					i = str.length();
+					changed = true;
 				}
 			}
 			
@@ -85,6 +145,9 @@ public class FilterCleanHtml extends Filter
 			i = tag_start;
 			while (i < str.length() && Character.isLetterOrDigit(str.charAt(i++)));
 			String tag = str.substring(tag_start, i - 1).toLowerCase();
+			
+			// Continue on empty tags. This also includes comments: <!-- text -->
+			if (tag.isEmpty()) {continue tag;}
 			
 			// Continue on void tags: area, base, br, col, embed, hr, img, input, keygen, link, menuitem, meta, param, source, track, wbr
 			// http://www.w3.org/html/wg/drafts/html/master/syntax.html#void-elements
@@ -117,7 +180,7 @@ public class FilterCleanHtml extends Filter
 					else
 					{
 						// If this tag was not opened, remove the end tag
-						str.replace(start, end, "");
+						str.delete(start, end);
 						end = start;
 						changed = true;
 					}
@@ -127,7 +190,7 @@ public class FilterCleanHtml extends Filter
 					if (!tags.removeLastOccurrence(tag))
 					{
 						// If this tag was not opened, remove the end tag
-						str.replace(start, end, "");
+						str.delete(start, end);
 						end = start;
 						changed = true;
 					}
@@ -150,21 +213,6 @@ public class FilterCleanHtml extends Filter
 			changed = true;
 		}
 		
-		if (changed)
-		{
-			if (update)
-			{
-				row.updateString("text", str.toString());
-				row.updateRow();
-			}
-			else
-			{
-				log(row.getString("text"));
-				log(str.toString());
-				log();
-			}
-			count("Updated");
-		}
-		count("Processed");
+		return changed;
 	}
 }

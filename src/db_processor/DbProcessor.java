@@ -54,14 +54,7 @@ public class DbProcessor
 		HashMap<String, String> opts = new HashMap<String, String>();
 		try
 		{
-			String[] params = filter.newInstance().get_params();
-			int i = 0;
-			int c = params.length;
-			while (i < c)
-			{
-				opts.put(params[i], null);
-				i++;
-			}
+			opts = filter.newInstance().get_params();
 		}
 		catch (InstantiationException e)
 		{
@@ -292,6 +285,7 @@ public class DbProcessor
         	PrintWriter file = new PrintWriter("log.txt");
         	file.println("Started at: " + start_date);
         	file.println("Ended at: " + end_date);
+        	file.println();
         	file.print(manager.log);
         	file.close();
         	System.out.println("Log written to log.txt");

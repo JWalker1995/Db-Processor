@@ -62,7 +62,7 @@ public abstract class Filter implements Runnable
 		}
 	}
 
-	abstract protected String[] get_params();
+	abstract protected HashMap<String, String> get_params();
 	abstract protected void process(ResultSet row) throws SQLException;
 	
 	protected void count(String key)
@@ -94,6 +94,11 @@ public abstract class Filter implements Runnable
 	}
 	protected void stop()
 	{
+		manager.cont = false;
+	}
+	protected void stop(String line)
+	{
+		log(line);
 		manager.cont = false;
 	}
 }
