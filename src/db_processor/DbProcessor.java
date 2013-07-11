@@ -7,6 +7,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -245,8 +246,12 @@ public class DbProcessor
 		    	return;
 		    }
 			
+		    String start_date = new Date().toString();
+		    
 	        Manager manager = new Manager(conn, sql, threads, filter);
 	        manager.run(opts, update, offset, chunk_size, limit);
+	        
+	        String end_date = new Date().toString();
 	        
 	        System.out.println("Finished!");
 	        
@@ -283,13 +288,14 @@ public class DbProcessor
 	        		System.out.println("Output (" + Integer.toString(i) + " lines) truncated to 100 lines, see counts.txt for a the full counts.");
 	        	}
 	        }
-	        if (manager.log.length() > 0)
-	        {
-	        	PrintWriter file = new PrintWriter("log.txt");
-	        	file.print(manager.log);
-	        	file.close();
-	        	System.out.println("Log written to log.txt");
-	        }
+	        
+        	PrintWriter file = new PrintWriter("log.txt");
+        	file.println("Started at: " + start_date);
+        	file.println("Ended at: " + end_date);
+        	file.print(manager.log);
+        	file.close();
+        	System.out.println("Log written to log.txt");
+        	
 	        if (!update)
 	        {
 	        	System.out.println("Add \"--update-db 1\" to update the database.");
