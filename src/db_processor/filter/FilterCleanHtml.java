@@ -48,7 +48,6 @@ public class FilterCleanHtml extends Filter
 		if (!opts_loaded)
 		{
 			column = opts.get("--column");
-			if (column == null) {stop("Please specify a column with \"--column\""); return;}
 			
 			max_length = Integer.parseInt(opts.get("--max-length"));
 
@@ -63,6 +62,8 @@ public class FilterCleanHtml extends Filter
 		StringBuilder str;
 		boolean changed;
 		
+		// Some columns have a maximum length. If the new data is longer than the column length, it will be truncated, often invalidating the html.
+		// While the new data is longer than the column length (specified with --max-length), truncate the original string by the overflow amount.
 		while (true)
 		{
 			str = new StringBuilder(orig.substring(0, use));

@@ -16,7 +16,8 @@ public class Manager
 	
 	private ThreadPoolExecutor exec;
 	
-	private String count_sql;
+	private long max = 0;
+	
 	private String select_sql;
 	
 	public volatile boolean cont = true;
@@ -24,7 +25,7 @@ public class Manager
 	public volatile HashMap<String, int[]> counts = new HashMap<String, int[]>();
 	public volatile StringBuffer log = new StringBuffer();
 	
-	public Manager(Connection conn, String sql, int threads, Class<Filter> filter) throws SQLException
+	public Manager(Connection conn, String sql, String max_sql, int threads, Class<Filter> filter) throws SQLException
 	{
 		this.conn = conn;
 		this.max_queue = threads * 2;
@@ -32,8 +33,13 @@ public class Manager
 		
 		exec = new ThreadPoolExecutor(threads, threads, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 
-		count_sql = sql.replace("SELECT * FROM", "SELECT COUNT(*) FROM");
-		select_sql = sql + " LIMIT ";
+		ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY).executeQuery(max_sql);
+		if (res.next())
+		{
+			this.max = res.getLong("max");
+		}
+
+		this.select_sql = sql;
 	}
 	
 	public void run(HashMap<String, String> opts, boolean update, int offset, int chunk_size, long limit) throws SQLException, InterruptedException
@@ -41,14 +47,16 @@ public class Manager
 		// Make limit absolute
 		limit += offset;
 		
-		ProgressBar progress = new ProgressBar(offset, Math.min(get_max(), limit), 64, " rows");
+		ProgressBar progress = new ProgressBar(offset, Math.min(max, limit), 64, " rows");
 
 		do
 		{
-			long get = Math.min(chunk_size, limit - offset);
-			if (get <= 0) {cont = false; continue;}
-
-			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, update ? ResultSet.CONCUR_UPDATABLE : ResultSet.CONCUR_READ_ONLY).executeQuery(select_sql + Integer.toString(offset) + "," + Long.toString(get));
+			long max = Math.min(offset + chunk_size, limit);
+			if (max <= offset) {cont = false; continue;}
+			
+			String sql = select_sql.replace("[min]", Integer.toString(offset)).replace("[max]", Long.toString(max));
+			
+			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, update ? ResultSet.CONCUR_UPDATABLE : ResultSet.CONCUR_READ_ONLY).executeQuery(sql);
 			
 			Filter filter_inst;
 			try
@@ -78,22 +86,11 @@ public class Manager
 			}
 		} while (cont);
 		
+		System.out.println("Waiting for threads to complete...");
+		
 		progress.end();
 
 		exec.shutdown();
 		exec.awaitTermination(1, TimeUnit.HOURS);
-	}
-	
-	private long get_max() throws SQLException
-	{
-		ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY).executeQuery(count_sql);
-		if (res.next())
-		{
-			return res.getLong("COUNT(*)");
-		}
-		else
-		{
-			return 0;
-		}
 	}
 }

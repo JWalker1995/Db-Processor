@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.PrintWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Comparator;
@@ -72,6 +73,7 @@ public class DbProcessor
 		String table = "";
 		String where = "";
 		String sql = "";
+		String primary = "";
 		int threads = 16;
 		int offset = 0;
 		int chunk_size = 1000;
@@ -112,6 +114,10 @@ public class DbProcessor
 			{
 				sql = args[++i];
 			}
+			else if (args[i].equals("-r") || args[i].equals("--primary"))
+			{
+				primary = args[++i];
+			}
 			else if (args[i].equals("-x") || args[i].equals("--threads"))
 			{
 				threads = Integer.parseInt(args[++i]);
@@ -148,21 +154,35 @@ public class DbProcessor
 			i++;
 		}
 		
+		boolean stop = false;
 		if (user.isEmpty())
 		{
 			System.out.println("Please specify a user with -u or --user");
-			return;
+			stop = true;
 		}
 		if (db.isEmpty())
 		{
 			System.out.println("Please specify a database with -d or --db");
-			return;
+			stop = true;
 		}
 		if (table.isEmpty() && sql.isEmpty())
 		{
 			System.out.println("Please specify a table with -t or --table");
-			return;
+			stop = true;
 		}
+		
+		Iterator<Map.Entry<String, String>> it = opts.entrySet().iterator();
+		while (it.hasNext())
+		{
+			Map.Entry<String, String> opt = it.next();
+			if (opt.getValue() == null)
+			{
+				System.out.println("Please specify the " + opt.getKey() + " parameter");
+				stop = true;
+			}
+		}
+		
+		if (stop) {return;}
 		
 		try
 		{
@@ -188,17 +208,19 @@ public class DbProcessor
 			}
 	        Connection conn = DriverManager.getConnection("jdbc:mysql://" + host + ":" + port + "/" + db, user, new String(password));
 	        System.out.println("Connected to database...");
-			
+	        
+	        if (primary.isEmpty())
+	        {
+	        	ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY).executeQuery("SHOW KEYS FROM node WHERE Key_name = \"PRIMARY\"");
+	    		if (res.next())
+	    		{
+	    			primary = res.getString("Column_name");
+	    		}
+	        }
+	        
 			if (sql.isEmpty())
 			{
-				if (where.isEmpty())
-				{
-					sql = "SELECT * FROM " + table;
-				}
-				else
-				{
-					sql = "SELECT * FROM " + table + " WHERE " + where;
-				}
+				sql = "SELECT * FROM " + table + " WHERE " + primary + " >= [min] AND " + primary + " < [max]" + (where.isEmpty() ? "" : " AND " + where) + " ORDER BY " + primary;
 			}
 			
 			// Trim and remove trailing ";"
@@ -206,6 +228,8 @@ public class DbProcessor
 			{
 				sql = sql.substring(0, sql.length() - 1);
 			}
+
+	        String max_sql = "SELECT MAX(" + primary + ")+1 AS max FROM " + table + (where.isEmpty() ? "" : " WHERE " + where);
 			
 			System.out.println("Please verify these parameters:");
 			System.out.println("	processor: " + filter_class);
@@ -222,7 +246,7 @@ public class DbProcessor
 			System.out.println("	memory limit: " + Long.toString(Runtime.getRuntime().maxMemory() / 1024 / 1024) + "MB (change with -Xmx[gigabytes]g)");
 			System.out.println("	update database: " + (update ? "YES" : "NO"));
 			
-			Iterator<Map.Entry<String, String>> it = opts.entrySet().iterator();
+			it = opts.entrySet().iterator();
 			while (it.hasNext())
 			{
 				Map.Entry<String, String> opt = it.next();
@@ -241,7 +265,7 @@ public class DbProcessor
 			
 		    String start_date = new Date().toString();
 		    
-	        Manager manager = new Manager(conn, sql, threads, filter);
+	        Manager manager = new Manager(conn, sql, max_sql, threads, filter);
 	        manager.run(opts, update, offset, chunk_size, limit);
 	        
 	        String end_date = new Date().toString();
@@ -334,6 +358,7 @@ public class DbProcessor
 		System.out.println("	-t, --table");
 		System.out.println("	-w, --where");
 		System.out.println("	-q, --sql");
+		System.out.println("	-r, --primary");
 		System.out.println("	-x, --threads");
 		System.out.println("	-o, --offset");
 		System.out.println("	-c, --chunk");
