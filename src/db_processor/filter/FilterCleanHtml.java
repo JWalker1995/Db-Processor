@@ -112,6 +112,9 @@ public class FilterCleanHtml extends Filter
 			while (++i < str.length() && Character.isLetterOrDigit(str.charAt(i)));
 			String tag = str.substring(tag_start, i).toLowerCase();
 			
+			// Continue when the tag starts with a number
+			if (Character.isDigit(tag.charAt(0))) {end++; continue tag;}
+			
 			// Continue when the pointer is in a raw text element and this element doesn't end the raw text element tag
 			// http://www.w3.org/html/wg/drafts/html/master/syntax.html#raw-text-elements
 			if (in_raw && !(end_tag && tag.equals(tags.peekLast()))) {end++; continue tag;}
