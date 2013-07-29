@@ -15,9 +15,7 @@ public class Manager
 	private Class<Filter> filter;
 	
 	private ThreadPoolExecutor exec;
-	
-	private long max = 0;
-	
+		
 	private String select_sql;
 	
 	public volatile boolean cont = true;
@@ -25,19 +23,13 @@ public class Manager
 	public volatile HashMap<String, int[]> counts = new HashMap<String, int[]>();
 	public volatile StringBuffer log = new StringBuffer();
 	
-	public Manager(Connection conn, String sql, String max_sql, int threads, Class<Filter> filter) throws SQLException
+	public Manager(Connection conn, String sql, int threads, Class<Filter> filter) throws SQLException
 	{
 		this.conn = conn;
 		this.max_queue = threads * 2;
 		this.filter = filter;
 		
 		exec = new ThreadPoolExecutor(threads, threads, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
-
-		ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY).executeQuery(max_sql);
-		if (res.next())
-		{
-			this.max = res.getLong("max");
-		}
 
 		this.select_sql = sql;
 	}
@@ -46,8 +38,8 @@ public class Manager
 	{
 		// Make limit absolute
 		limit += offset;
-		
-		ProgressBar progress = new ProgressBar(offset, Math.min(max, limit), 64, " rows");
+				
+		ProgressBar progress = new ProgressBar(offset, limit, 64, " rows");
 
 		do
 		{

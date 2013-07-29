@@ -230,6 +230,17 @@ public class DbProcessor
 			}
 
 	        String max_sql = "SELECT MAX(" + primary + ")+1 AS max FROM " + table + (where.isEmpty() ? "" : " WHERE " + where);
+			ResultSet res = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY).executeQuery(max_sql);
+			if (res.next())
+			{
+				long max = res.getLong("max") - offset;
+				if (max < limit) {limit = max;}
+			}
+			else
+			{
+				System.out.println("Maximum row query returned an empty result set");
+				return;
+			}
 			
 			System.out.println("Please verify these parameters:");
 			System.out.println("	processor: " + filter_class);
@@ -265,7 +276,7 @@ public class DbProcessor
 			
 		    String start_date = new Date().toString();
 		    
-	        Manager manager = new Manager(conn, sql, max_sql, threads, filter);
+	        Manager manager = new Manager(conn, sql, threads, filter);
 	        manager.run(opts, update, offset, chunk_size, limit);
 	        
 	        String end_date = new Date().toString();
