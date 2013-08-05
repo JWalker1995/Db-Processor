@@ -111,7 +111,10 @@ public class FilterCleanHtml extends Filter
 			
 			while (++i < str.length() && Character.isLetterOrDigit(str.charAt(i)));
 			String tag = str.substring(tag_start, i).toLowerCase();
-			
+
+			// Continue on empty tags. This also includes comments: <!-- text -->
+			if (tag.isEmpty()) {end++; continue tag;}
+
 			// Continue when the tag starts with a number
 			if (Character.isDigit(tag.charAt(0))) {end++; continue tag;}
 			
@@ -152,10 +155,7 @@ public class FilterCleanHtml extends Filter
 			i = end - 1;
 			while (str.charAt(--i) == ' ');
 			if (str.charAt(i) == '/') {continue tag;}
-			
-			// Continue on empty tags. This also includes comments: <!-- text -->
-			if (tag.isEmpty()) {continue tag;}
-			
+						
 			// Continue on void tags: area, base, br, col, embed, hr, img, input, keygen, link, menuitem, meta, param, source, track, wbr
 			// http://www.w3.org/html/wg/drafts/html/master/syntax.html#void-elements
 			if (tag.equals("area") || tag.equals("base") || tag.equals("br") || tag.equals("col") ||
